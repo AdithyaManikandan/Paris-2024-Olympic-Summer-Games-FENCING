@@ -1,3 +1,13 @@
 # R language project 
 # Paris 2024 Olympic Summer Games-FENCING
  The Paris 2024 Olympic Summer Games dataset provides comprehensive information about the Summer Olympics held in 2024. It covers various aspects of the event, including participating countries, athletes, sports disciplines, medal standings, and key event details. More about the Olympic Games on the official site Olympics Paris 2024  Fencing is a strategic and competitive Olympic sport that combines agility, technique, and precision. This project aims to analyze a dataset related to fencing competitions, exploring various facets such as participant performance, country representation, and event outcomes. The insights generated can help in understanding trends, identifying top-performing countries, and evaluating individual and collective achievements. The dataset used in this project contains information on fencing events, participants, and results. The data has been sourced from https://www.kaggle.com/datasets/piterfm/paris-2024-olympic-summer-games
+
+There are missing values in the data sets.
+
+In the Fencing dataset, we identified and removed columns with common values that were the same across all event disciplines. Additionally, in the event_name column, special and accented characters were replaced with standard values. Several derived columns and calculated metrics were created to shape the data for effective analysis.
+
+We have added the win percentage by participant. This metric highlights the success rate of each participant in fencing matches. Average Point shows average points scored per match. This indicates the average performance of participants in their respective matches, Performance Index is a custom index, and it was created to combine Win Percentage and Average Points for ranking participants. Event Discipline Dominance We determined which fencing discipline (Épée, Foil, Sabre) had the highest average points and win percentage, helping identify areas of strength. Win Ratio Represents the proportion of matches a participant or team has won out of the total matches they have played. It is a measure of success or efficiency in competitions.
+
+For this project, we utilized the provided Fencing Dataset and supplemented it with the Medalist Dataset to perform a comprehensive analysis. By merging the Medalist Dataset with the Fencing Dataset, we generated the Fencing Medals Summary Table. This table includes details about medals won by each participant and country in each event discipline, providing a more detailed view of performance.The new updated data as follows:
+
+<img width="1379" alt="Screenshot 2025-02-10 at 3 33 44 AM" src="https://github.com/user-attachments/assets/3d5d0ee0-8159-44b3-994a-f30bc3a5717f" />
