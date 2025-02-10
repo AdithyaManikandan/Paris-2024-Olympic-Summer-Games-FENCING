@@ -1,0 +1,367 @@
+---
+title: "ST661 (R for Data Analytics)"
+author: " ADITHYAMANIKANDAN JAWAHER"
+output:
+  html_document:
+    code_folding: hide
+  fig_caption: YES  
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "/Users/adithyamanikandan/Downloads/olympics")
+```
+
+```{r,include=FALSE}
+library(ggplot2)
+library(dplyr)
+library(crosstalk)
+library(readr)
+library(plotly)
+
+```
+
+
+# Paris 2024 Olympic Summer Games-FENCING   {.tabset .tabset-fade .tabset-pills} 
+## Introduction  {.tabset .tabset-fade .tabset-pills} 
+
+
+
+The Paris 2024 Olympic Summer Games dataset provides comprehensive information about the Summer Olympics held in 2024. It covers various aspects of the event, including participating countries, athletes, sports disciplines, medal standings, and key event details. More about the Olympic Games on the official site Olympics Paris 2024
+
+Fencing is a strategic and competitive Olympic sport that combines agility, technique, and precision. This project aims to analyze a dataset related to fencing competitions, exploring various facets such as participant performance, country representation, and event outcomes. The insights generated can help in understanding trends, identifying top-performing countries, and evaluating individual and collective achievements. The dataset used in this project contains information on fencing events, participants, and results. 
+The data has been sourced from https://www.kaggle.com/datasets/piterfm/paris-2024-olympic-summer-games
+
+
+
+__Dataset information:__
+```{r}
+
+setwd("/Users/adithyamanikandan/Downloads/olympics")
+fencing_data <- read.csv("fencing_data_updated.csv")
+fencing_medals_summary <- read_csv('fencing_medals_summary.csv',show_col_types = FALSE )
+head(fencing_data,3)
+
+```
+
+## Data Adjustments {.tabset .tabset-fade .tabset-pills}
+
+There are __missing values__ in the data sets.
+
+
+In the Fencing dataset, we identified and removed columns with common values that were the same across all event disciplines. Additionally, in the event_name column, special and accented characters were replaced with standard values. Several derived columns and calculated metrics were created to shape the data for effective analysis. 
+
+We have added the win percentage by participant. This metric highlights the success rate of each participant in fencing matches. Average Point shows average points scored per match. This indicates the average performance of participants in their respective matches, Performance Index is a custom index, and it was created to combine Win Percentage and Average Points for ranking participants. Event Discipline Dominance We determined which fencing discipline (Épée, Foil, Sabre) had the highest average points and win percentage, helping identify areas of strength. Win Ratio Represents the proportion of matches a participant or team has won out of the total matches they have played. It is a measure of success or efficiency in competitions.
+
+For this project, we utilized the provided Fencing Dataset and supplemented it with the Medalist Dataset to perform a comprehensive analysis. By merging the Medalist Dataset with the Fencing Dataset, we generated the Fencing Medals Summary Table. This table includes details about medals won by each participant and country in each event discipline, providing a more detailed view of performance.The new updated data as follows:
+
+```{r}
+ 
+fencing_data <- fencing_data %>%
+  group_by(participant_name) %>%
+  mutate(matches_played = n()) %>%
+  ungroup()
+
+# ⁠Win Percentage by Participant
+fencing_data <- fencing_data %>%
+  group_by(participant_name) %>%
+  mutate(
+    wins = sum(result_WLT == "W", na.rm = TRUE),
+    win_percentage = (wins / matches_played) * 100
+  ) %>%
+  ungroup()
+
+# ⁠Average Points Scored per Match
+fencing_data <- fencing_data %>%
+  group_by(participant_name) %>%
+  mutate(avg_points = mean(result, na.rm = TRUE)) %>%
+  ungroup()
+
+# ⁠Performance Index
+fencing_data <- fencing_data %>%
+  mutate(performance_index = (win_percentage * 0.7) + (avg_points * 0.3))
+
+# ⁠Event Discipline Dominance
+fencing_data <- fencing_data %>%
+  group_by(event_name) %>%
+  mutate(
+    discipline_avg_points = mean(result, na.rm = TRUE),
+    discipline_win_percentage = mean(result_WLT == "W", na.rm = TRUE) * 100
+  ) %>%
+  ungroup()
+
+# Add the win_ratio column
+fencing_data$win_ratio <- ifelse(fencing_data$matches_played > 0,
+                                 fencing_data$wins / fencing_data$matches_played, 
+                                 0)
+# writing the updated file
+write.csv(fencing_data, "fencing_data_updated2.csv", row.names = FALSE)
+df <- read.csv("fencing_data_updated2.csv")
+
+head(df,3)
+
+```
+
+
+
+
+
+
+
+## Data Analysis {.tabset .tabset-pills}
+
+
+
+
+### Story 1
+
+__How does the average performance index vary across different countries?__
+
+```{r, fig.height = 5, fig.width = 8, fig.align='center',fig.cap='Figure 1: Bar Plot-average performance index vary across different countries'}
+average_performance <- fencing_data %>%
+  group_by(participant_country) %>%
+  summarize(avg_performance = mean(result, na.rm = TRUE))
+
+top_10 <- average_performance %>% slice_max(avg_performance, n = 10)
+bottom_10 <- average_performance %>% slice_min(avg_performance, n = 10)
+filtered_data <- bind_rows(top_10, bottom_10)
+
+top_countries <- average_performance %>% slice_max(avg_performance, n = 3)
+lowest_countries <- average_performance %>% slice_min(avg_performance, n = 2)
+
+ggplot(filtered_data, aes(x = reorder(participant_country, avg_performance), y = avg_performance, fill = avg_performance)) +
+  geom_bar(stat = "identity") +
+  geom_text(data = top_countries, aes(label = round(avg_performance, 1)), hjust = -0.2, color = "forestgreen", size = 3) +
+  geom_text(data = lowest_countries, aes(label = round(avg_performance, 1)), hjust = -0.2, color = "red3", size = 3) +
+  coord_flip() +
+  scale_fill_gradient(low = "lightblue", high = "darkblue") +
+  labs(
+    title ="The average performance index vary across different countries",
+    x = "Country",
+    y = "Average Performance Index",
+    fill = "Performance Index",
+    caption = "Data Source: Paris 2024 Olympics Fencing Results"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    axis.text.y = element_text(size = 10),
+    legend.position = "top"
+  )
+
+```
+
+
+This analysis investigates how countries performed in fencing competitions by calculating their average performance index. The aim is to highlight global disparities, identify topperforming countries, and uncover potential areas for improvement. The top three countries, highlighted in green, exhibit exceptional performance, consistently outperforming others in fencing competitions.
+
+
+### Story 2
+__Which country has highest medal tally across all event disciplines?__ 
+
+```{r, fig.height = 5, fig.width = 8, fig.align='center',fig.cap='Figure 1: Bar Plot'}
+
+
+
+
+medals_summary_prepared <- fencing_medals_summary %>%
+  group_by(participant_country, name, medal_type) %>%
+  summarise(medal_count = n()) %>%
+  ungroup() %>%
+  group_by(participant_country) %>%
+  summarise(
+    total_medals = sum(medal_count),
+    gold_medals = sum(medal_count[medal_type == "Gold Medal"]),
+    silver_medals = sum(medal_count[medal_type == "Silver Medal"]),
+    bronze_medals = sum(medal_count[medal_type == "Bronze Medal"]),
+    players = paste(unique(name), collapse = ", ")
+  ) %>%
+  arrange(desc(total_medals))
+
+
+shared_medals_data <- SharedData$new(medals_summary_prepared, key = ~participant_country, group = "Country")
+
+
+plot <- plot_ly(shared_medals_data, x = ~reorder(participant_country, -total_medals), y = ~gold_medals, type = 'bar', name = 'Gold Medals',
+                marker = list(color = '#FFD700'),
+                text = ~paste("Country: ", participant_country,
+                              "<br>Gold Medals: ", gold_medals,
+                              "<br>Total Medals: ", total_medals,
+                              "<br>Players: ", players),
+                hoverinfo = 'text') %>%
+  add_trace(y = ~silver_medals, name = 'Silver Medals', marker = list(color = '#C0C0C0'),
+            text = ~paste("Country: ", participant_country,
+                          "<br>Silver Medals: ", silver_medals,
+                          "<br>Total Medals: ", total_medals,
+                          "<br>Players: ", players),
+            hoverinfo = 'text') %>%
+  add_trace(y = ~bronze_medals, name = 'Bronze Medals', marker = list(color = '#CD7F32'),
+            text = ~paste("Country: ", participant_country,
+                          "<br>Bronze Medals: ", bronze_medals,
+                          "<br>Total Medals: ", total_medals,
+                          "<br>Players: ", players),
+            hoverinfo = 'text') %>%
+  layout(title = "Fencing Medal Tally by Country",
+         xaxis = list(title = "Country", tickangle = -45),
+         yaxis = list(title = "Number of Medals"),
+         barmode = 'stack',
+         plot_bgcolor = '#f0f8ff',
+         paper_bgcolor = '#ffffff',
+         font = list(size = 12))
+
+
+bscols(
+  widths = c(3, 9),
+  filter_select("countrySelect", "Select Country", shared_medals_data, ~participant_country, multiple = FALSE),
+  plot
+)
+
+```
+         Figure 2: Bar Plot-Country has highest medal tally across all event
+The plot displays each country's total medal count, broken down by gold, silver, and bronze medals, in a visually appealing and interactive manner. This allows for a clear comparison of the fencing performance of different countries.
+
+
+
+
+### Story 3
+
+__Which countries have the highest total wins across all events?__  
+
+```{r,fig.height = 5, fig.width = 8, fig.align='center',fig.cap='Figure 3: Bar Plot-Countries have the highest total wins across'}
+total_wins_by_country <- fencing_data %>%
+  filter(result_WLT == "W") %>% 
+  group_by(participant_country) %>%
+  summarise(total_wins = n()) %>%
+  arrange(desc(total_wins))  
+top_countries <- total_wins_by_country %>% slice_max(total_wins, n = 10)
+ggplot(total_wins_by_country, aes(x = reorder(participant_country, -total_wins), y = total_wins, fill = total_wins)) +
+  geom_col() +
+  geom_text(
+    data = top_countries,
+    aes(label = total_wins),
+    hjust = -0.2,
+    size = 3,
+    color = "red"
+  ) +
+  scale_fill_gradient(low = "lightgreen", high = "darkgreen") +
+  labs(
+    title = "Which Countries Have the Highest Total Wins Across All Events?",
+    x = "Country",
+    y = "Total Wins",
+    fill = "Wins"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(face = "bold", size = 14)
+  )
+ 
+
+
+```
+__France, Italy, and the United States are the top three countries with the most wins across all events, with France leading with 39 wins in first place.__
+X-axis: Countries are reordered by total wins in descending order.
+Y-axis: Number of wins.
+Color Gradient: Bars are shaded from lightgreen (fewer wins) to darkgreen (more wins)
+
+
+
+### Story 4
+__How do participants’ win ratios vary with average points scored and matches played in fencing competitions?.__
+```{r,fig.height = 5, fig.width = 8, fig.align='center',fig.cap='Figure 4: 3D Plot-Win ratios vary with average points scored and matches played'}
+
+fencing_data$win_ratio <- ifelse(fencing_data$matches_played > 0,
+                                 fencing_data$wins / fencing_data$matches_played, 
+                                 0)
+fig <- plot_ly(
+  data = fencing_data,
+  x = ~win_ratio,       
+  y = ~avg_points,      
+  z = ~matches_played,  
+  type = "scatter3d",
+  mode = "markers",
+  marker = list(
+    size = ~matches_played / max(fencing_data$matches_played) * 15, 
+    color = ~win_ratio,                                           
+    colorscale = "Rainbow",                                       
+    colorbar = list(title = "Win Ratio"),                         
+    opacity = 0.8
+  ),
+  hoverinfo = "text",
+  text = ~ifelse(
+    participant_type == "Person",
+    paste(
+      "Participant: ", participant_name, " (", participant_country, ")", "<br>",
+      "Win Ratio: ", round(win_ratio, 2), "<br>",
+      "Average Points: ", round(avg_points, 2), "<br>",
+      "Matches Played: ", round(matches_played, 2)
+    ),
+    paste(
+      "Participant: ", participant_name, "<br>",
+      "Win Ratio: ", round(win_ratio, 2), "<br>",
+      "Average Points: ", round(avg_points, 2), "<br>",
+      "Matches Played: ", round(matches_played, 2)
+    )
+  )
+)
+
+fig <- fig %>%
+  layout(
+    title = "3D Plot: Win Ratio vs Average Points vs Matches Played",
+    scene = list(
+      xaxis = list(title = "Win Ratio"),
+      yaxis = list(title = "Average Points"),
+      zaxis = list(title = "Matches Played"),
+      camera = list(
+        eye = list(x = 1.5, y = 1.5, z = 1.5)  
+      )
+    )
+  )
+
+fig
+
+
+
+
+```
+
+
+The 3D scatter plot visualizes the relationship between three key performance metrics in fencing competitions: win ratio, average points scored, and matches played. The X-axis represents the win ratio, showing participants' success rates. The Y-axis indicates average points scored, highlighting scoring efficiency, while the Z-axis displays the total number of matches played, representing participation levels. Each point represents a participant or team, with the size of the marker proportional to the number of matches played and its color determined by the win ratio using a vivid rainbow gradient. Hovering over the points provides detailed information about the participant or team, including their name, country, and performance metrics. The 3D interactivity allows users to rotate, zoom, and explore the data for better insights.
+
+## Conclusion
+
+__1)How does the average performance index vary across different countries?__
+
+The bar chart showcases the Average Performance Index of each country, ranked from lowest to highest. The countries are plotted on the y-axis, and their respective performance indices are displayed on the x-axis.
+
+ The top three countries, highlighted in green, exhibit exceptional performance,consistently outperforming others in fencing competitions.
+ The bottom three countries, marked in red, have the lowest average performance
+indices, suggesting room for improvement.The spread of the bars indicates significant variability between countries, reflecting disparities in training, resources, or participation levels.
+
+
+
+__2) Which country has highest medal tally across all event disciplines?__ 
+
+__France__, __Italy__ and Japan are the top three countries with most number of medals across all the events, with __France leading with 41 medals in the first place__. Even though the United States is in 4th place in the medal tally, they have the highest number of gold medals, which shows their impressive win conversion rate in the finals, highlighting their effectiveness in securing top positions. Italy and France are the top two countries in the medal tally, a significant portion of their medals are silver. This indicates that although they are highly competitive and frequently reach the finals, they often fall just short of winning gold.
+
+
+
+__3) Which countries have the highest total wins across all events?__ 
+
+__France__, __Italy__, and the __United States__ are the top three countries with the most wins across all events, with __Franceleading with 39 wins in first place__.Using R, we cleaned and analyzed the data, creating visuals to spot patterns and trends in the results. The findings show how preparation, training, and resources help countries succeed. This project gives a clear view of the competition and can guide future studies to explore what makes these countries perform so well or predict future outcomes in similar events.
+
+
+__4) How do participants’ win ratios vary with average points scored and matches played in fencing competitions?.__
+
+The plot reveals distinct patterns and relationships among the variables. Participants with high win ratios tend to score more average points, emphasizing the critical role of scoring efficiency in achieving success. However, participants or teams with many matches often exhibit moderate win ratios, suggesting that extended exposure to competition may lead to mixed outcomes. The visualization also highlights outliers—participants with exceptionally high win ratios despite playing relatively few matches, indicating remarkable efficiency. This 3D plot provides a comprehensive view of how different factors interplay in determining fencing performance, allowing for in-depth analysis.
+
+
+
+
+**Author's statements :**
+
+“I, ADITHYAMANIKANDAN JAWAHER, had primary responsibility for integrating all plots and generating the report and INTRODUCTION I was also responsible for creating story 3."
+ 
+“I, BHARATH SHIVADAS KOTIAN, had primary responsibility for creating story 2 and performing calculations/data cleaning which includes adding fields Win Percentage by Participant, Total Matches Played by Each Participant, Average Points Scored per Match, Performance Index ."
+  
+“I, JOJO JUSTINE, had primary responsibility for creating story 4 and performing calculations/data cleaning which includes adding fields Event Discipline Dominance, Fencing Medals Summary, Win Ratio.."
+   
+“I, RAGHUL SENTHIL VEL, had primary responsibility for integrating all plots and generating the report and CONCLUSION tab. I was also responsible for creating story 1 ."
